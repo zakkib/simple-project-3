@@ -1,11 +1,5 @@
-/**
- * Applies K-Means first, then finds contours on the result.
- * @param {object} cv - The OpenCV object.
- * @param {cv.Mat} src - The source Mat (RGBA).
- * @param {cv.Mat} dst - The destination Mat (RGB) to write to.
- */
 export function processCombinedContours(cv, src, dst) {
-    // K-Means (Writes to dst)
+    // K-Means
     const K = 5;
     const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0);
     const labels = new cv.Mat();
@@ -45,7 +39,7 @@ export function processCombinedContours(cv, src, dst) {
     labels.delete(); 
     centers.delete();
 
-    // Find Contours (Reads from dst, writes back to dst)
+    // Find Contours
     const binary = new cv.Mat();
     const gray = new cv.Mat();
     const contours = new cv.MatVector();
@@ -60,8 +54,5 @@ export function processCombinedContours(cv, src, dst) {
     // Draw contours back onto dst
     cv.drawContours(dst, contours, -1, color, 1, cv.LINE_8, hierarchy, 100); 
     
-    gray.delete(); 
-    binary.delete(); 
-    contours.delete(); 
-    hierarchy.delete();
+    gray.delete(); binary.delete(); contours.delete(); hierarchy.delete();
 }

@@ -1,9 +1,3 @@
-/**
- * Finds and draws contours on a black background.
- * @param {object} cv - The OpenCV object.
- * @param {cv.Mat} src - The source Mat (RGBA).
- * @param {cv.Mat} dst - The destination Mat (RGB) to write to.
- */
 export function processContours(cv, src, dst) {
     const binary = new cv.Mat();
     const gray = new cv.Mat();
@@ -18,8 +12,5 @@ export function processContours(cv, src, dst) {
     // Draw contours onto the empty dst Mat
     cv.drawContours(dst, contours, -1, color, 1, cv.LINE_8, hierarchy, 100);
     
-    gray.delete(); 
-    binary.delete(); 
-    contours.delete(); 
-    hierarchy.delete();
+    gray.delete(); binary.delete(); contours.delete(); hierarchy.delete();
 }

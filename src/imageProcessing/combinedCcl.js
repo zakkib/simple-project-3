@@ -1,11 +1,5 @@
 import { createRandomColors } from './utils.js';
 
-/**
- * Applies K-Means, then runs CCL on the K-Means result.
- * @param {object} cv - The OpenCV object.
- * @param {cv.Mat} src - The source Mat (RGBA).
- * @param {cv.Mat} dst - The destination Mat (RGB) to write to.
- */
 export function processCombinedCcl(cv, src, dst) {
     // --- Part 1: Run K-Means ---
     const kmeansResult = new cv.Mat(); // Temporary mat for k-means output
@@ -81,10 +75,5 @@ export function processCombinedCcl(cv, src, dst) {
     }
     
     // Cleanup CCL Mats
-    kmeansResult.delete(); 
-    gray.delete(); 
-    binary.delete(); 
-    labels_ccl.delete(); 
-    stats.delete(); 
-    centroids.delete();
+    kmeansResult.delete(); gray.delete(); binary.delete(); labels_ccl.delete(); stats.delete(); centroids.delete();
 }

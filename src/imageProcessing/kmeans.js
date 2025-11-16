@@ -1,9 +1,3 @@
-/**
- * Applies K-Means color quantization to the source image.
- * @param {object} cv - The OpenCV object.
- * @param {cv.Mat} src - The source Mat (RGBA).
- * @param {cv.Mat} dst - The destination Mat (RGB) to write to.
- */
 export function processKmeans(cv, src, dst) {
     const K = 5;
     const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0);
@@ -42,8 +36,5 @@ export function processKmeans(cv, src, dst) {
         dst.data[p_result++] = centers_data[label * 3 + 2]; // B
     }
     
-    rgb.delete(); 
-    samples32f.delete(); 
-    labels.delete(); 
-    centers.delete();
+    rgb.delete(); samples32f.delete(); labels.delete(); centers.delete();
 }

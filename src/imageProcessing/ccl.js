@@ -1,11 +1,5 @@
 import { createRandomColors } from './utils.js';
 
-/**
- * Applies Connected Components Labeling to the source image edges.
- * @param {object} cv - The OpenCV object.
- * @param {cv.Mat} src - The source Mat (RGBA).
- * @param {cv.Mat} dst - The destination Mat (RGB) to write to.
- */
 export function processCcl(cv, src, dst) {
     const binary = new cv.Mat();
     const gray = new cv.Mat();
@@ -32,9 +26,5 @@ export function processCcl(cv, src, dst) {
         dst.data[p_dst++] = color[2]; // B
     }
     
-    gray.delete(); 
-    binary.delete(); 
-    labels.delete(); 
-    stats.delete(); 
-    centroids.delete();
+    gray.delete(); binary.delete(); labels.delete(); stats.delete(); centroids.delete();
 }
