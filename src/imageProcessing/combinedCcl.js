@@ -1,9 +1,9 @@
 import { createRandomColors } from './utils.js';
 
-export function processCombinedCcl(cv, src, dst) {
+export function processCombinedCcl(cv, src, dst, options = {}) {
     // --- Part 1: Run K-Means ---
     const kmeansResult = new cv.Mat(); // Temporary mat for k-means output
-    const K = 8;
+    const K = options.k || 8;
     const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0);
     const labels_kmeans = new cv.Mat();
     const centers = new cv.Mat();
@@ -26,11 +26,22 @@ export function processCombinedCcl(cv, src, dst) {
 
     cv.kmeans(samples32f, K, labels_kmeans, criteria, 1, cv.KMEANS_RANDOM_CENTERS, centers);
     centers.convertTo(centers, cv.CV_8U, 255.0);
+
+    // --- EXTRACT COLORS ---
+    const colors = [];
+    const centers_data = centers.data; 
+    for(let i = 0; i < centers.rows; i++) {
+        colors.push({
+            r: centers_data[i * 3],
+            g: centers_data[i * 3 + 1],
+            b: centers_data[i * 3 + 2]
+        });
+    }
+    // ----------------------
     
     // Rebuild image into a temporary Mat
     const tempResult = new cv.Mat(src.rows, src.cols, cv.CV_8UC3);
     let p_result = 0;
-    let centers_data = centers.data; 
     let labels_data_kmeans = labels_kmeans.data32S;
     
     for (let i = 0; i < labels_data_kmeans.length; ++i) {
@@ -62,13 +73,13 @@ export function processCombinedCcl(cv, src, dst) {
     let numLabels = cv.connectedComponentsWithStats(binary, labels_ccl, stats, centroids);
 
     // Visualize the labels into the final 'dst' Mat
-    let colors = createRandomColors(numLabels);
+    let randomColors = createRandomColors(numLabels);
     
     let p_dst = 0;
     let labels_data_ccl = labels_ccl.data32S;
     for (let i = 0; i < labels_data_ccl.length; i++) {
         let label = labels_data_ccl[i];
-        let color = colors[label];
+        let color = randomColors[label];
         dst.data[p_dst++] = color[0]; // R
         dst.data[p_dst++] = color[1]; // G
         dst.data[p_dst++] = color[2]; // B
@@ -76,4 +87,6 @@ export function processCombinedCcl(cv, src, dst) {
     
     // Cleanup CCL Mats
     kmeansResult.delete(); gray.delete(); binary.delete(); labels_ccl.delete(); stats.delete(); centroids.delete();
+
+    return { colors };
 }

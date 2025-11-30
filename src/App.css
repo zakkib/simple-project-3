@@ -261,3 +261,118 @@ body {
 .placeholder-hidden {
   display: none; /* hidden */
 }
+
+/* ======== */
+
+.control-section {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+}
+
+.settings-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1.5rem;
+}
+
+.setting-group {
+    flex: 1;
+    min-width: 300px;
+}
+
+.setting-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.image-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.simple-select {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid #d1d5db;
+    background-color: #ffffff; /* Latar putih */
+    
+    /* TAMBAHKAN BARIS INI: */
+    color: #1f2937; /* Warna teks gelap agar terbaca */
+    
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+/* Opsional: Untuk memastikan opsi di dalam dropdown juga aman di semua browser */
+.simple-select option {
+    background-color: #ffffff;
+    color: #1f2937;
+}
+
+.or-divider {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #9ca3af;
+}
+
+.file-input-style-compact {
+    font-size: 0.8rem;
+}
+
+.button-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* Palette Styles */
+.palette-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.palette-container h3 {
+    margin-top: 0;
+    font-size: 1rem;
+    color: #374151;
+}
+
+.palette-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.color-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 60px;
+}
+
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #e5e7eb;
+    margin-bottom: 0.25rem;
+}
+
+.color-hex {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #6b7280;
+}

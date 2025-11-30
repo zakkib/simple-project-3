@@ -1,7 +1,17 @@
-import { createSignal, onMount } from 'solid-js';
+import { createSignal, onMount, For } from 'solid-js';
 import './App.css';
 import { getOpenCv, translateException } from './opencv.js';
 import { imageProcessors } from './imageProcessing/index.js';
+
+// Pre-defined images. For this to work offline, place images in the 'public' folder 
+// and reference them like '/image1.jpg'. 
+// Using picsum for instant demonstration purposes.
+const PREDETERMINED_IMAGES = [
+    { name: 'Low Poly', url: '/low_poly.png' },
+    { name: 'Piet Mondrian', url: '/piet_mondrian.jpg' },
+    { name: 'Truchet', url: '/truchet.jpg' },
+    { name: 'Voronoi', url: '/voronoi.png' }
+];
 
 function App() {
   // --- Refs for DOM elements ---
@@ -11,6 +21,8 @@ function App() {
   let processedPlaceholder;
   let inputElement;
   let statusMessage;
+  
+  // Buttons refs
   let grayscaleBtn;
   let cannyBtn;
   let contoursBtn;
@@ -18,42 +30,41 @@ function App() {
   let combinedContoursBtn;
   let cclBtn;
   let combinedCclBtn;
+  // let SX;  
   let resetBtn;
 
   // --- State ---
-  // Store the loaded cv object in a signal
   const [cv, setCv] = createSignal(null);
-  // Store the main image Mat in a plain variable
+  const [difficulty, setDifficulty] = createSignal('medium'); // easy, medium, hard
+  const [palette, setPalette] = createSignal([]);
+  
   let originalMat = null; 
+
+  // --- Helper to convert RGB to Hex ---
+  const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
+    const hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
 
   // --- Lifecycle ---
   onMount(async () => {
     try {
-      // Load OpenCV
       const { cv: cvInstance } = await getOpenCv();
-      setCv(cvInstance); // Store in signal
+      setCv(cvInstance);
 
-      // Now that CV is loaded, enable UI
       console.log('OpenCV.js is loaded.');
       statusMessage.classList.remove('status-message-yellow');
       statusMessage.classList.add('status-message-green');
       statusMessage.textContent = 'OpenCV.js loaded successfully. Ready to process.';
       inputElement.disabled = false;
 
-      // Add file listener
+      // File listener
       inputElement.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (event) => {
-                imgElement.onload = () => {
-                    loadOriginalMat(imgElement);
-                    toggleControls(true);
-                };
-                imgElement.src = event.target.result;
-                imgElement.classList.remove('image-display-hidden');
-                processedPlaceholder.classList.remove('placeholder-hidden');
-                processedCanvas.classList.add('canvas-hidden');
+               loadSrc(event.target.result);
             };
             reader.readAsDataURL(file);
         }
@@ -64,35 +75,31 @@ function App() {
     }
   });
 
-  // --- UI Logic ---
-  function toggleControls(enable) {
-    grayscaleBtn.disabled = !enable;
-    cannyBtn.disabled = !enable;
-    contoursBtn.disabled = !enable;
-    kmeansBtn.disabled = !enable;
-    combinedContoursBtn.disabled = !enable;
-    cclBtn.disabled = !enable;
-    combinedCclBtn.disabled = !enable;
-    resetBtn.disabled = !enable;
+  // --- Unified Image Loader ---
+  function loadSrc(srcUrl) {
+    imgElement.onload = () => {
+        loadOriginalMat(imgElement);
+        toggleControls(true);
+        setPalette([]); // Reset palette on new image
+    };
+    imgElement.crossOrigin = "Anonymous"; // Allow loading from external URLs
+    imgElement.src = srcUrl;
+    imgElement.classList.remove('image-display-hidden');
+    processedPlaceholder.classList.remove('placeholder-hidden');
+    processedCanvas.classList.add('canvas-hidden');
   }
 
-  // --- Image Loading ---
+  function toggleControls(enable) {
+    const btns = [grayscaleBtn, cannyBtn, contoursBtn, kmeansBtn, combinedContoursBtn, cclBtn, combinedCclBtn, resetBtn];
+    btns.forEach(btn => { if(btn) btn.disabled = !enable; });
+  }
+
   function loadOriginalMat(img) {
-    const cvInstance = cv(); // Get from signal
-    if (!cvInstance) {
-      console.error("OpenCV not ready in loadOriginalMat");
-      return;
-    }
+    const cvInstance = cv();
+    if (!cvInstance) return;
 
     try {
-        if (!img.complete) {
-            console.error("Image not fully loaded yet.");
-            return;
-        }
-
-        if (originalMat) {
-            originalMat.delete();
-        }
+        if (originalMat) originalMat.delete();
         
         originalCanvas.width = img.naturalWidth;
         originalCanvas.height = img.naturalHeight;
@@ -106,80 +113,70 @@ function App() {
 
         statusMessage.textContent = `Image loaded: ${originalMat.cols}x${originalMat.rows}. Choose a process.`;
     } catch (error) {
-        console.error("Error loading image into OpenCV Mat:", error);
-        const exception = translateException(cvInstance, error);
-        console.error(exception);
-        statusMessage.textContent = 'Error processing image. Check console.';
+        console.error(error);
+        statusMessage.textContent = 'Error processing image.';
     }
   }
 
   // --- Image Processing ---
+  function getKFromDifficulty() {
+      const level = difficulty();
+      if (level === 'easy') return 5; //easy
+      if (level === 'hard') return 30; //hard
+      return 15; // medium
+  }
+
   function processImage(operation) {
-      const cvInstance = cv(); // Get from signal
-      if (!cvInstance) {
-          statusMessage.textContent = 'OpenCV is not ready.';
-          return;
-      }
-      if (!originalMat) {
-          statusMessage.textContent = 'Please load an image first.';
-          return;
-      }
+      const cvInstance = cv();
+      if (!cvInstance || !originalMat) return;
 
-      // 1. Find the processor function from the map
       const processor = imageProcessors[operation];
-      if (!processor) {
-          console.warn("Unknown operation:", operation);
-          statusMessage.textContent = `Unknown operation: ${operation}.`;
-          return;
-      }
+      if (!processor) return;
 
-      statusMessage.textContent = `Processing image with ${operation}...`;
+      statusMessage.textContent = `Processing ${operation} (Difficulty: ${difficulty()})...`;
       
-      // 2. Create src and dst Mats. These are managed here.
       const src = originalMat.clone(); 
       const dst = new cvInstance.Mat(src.rows, src.cols, cvInstance.CV_8UC3, new cvInstance.Scalar(0, 0, 0));
       
       try {
-          // 3. Call the external processor function
-          processor(cvInstance, src, dst);
+          // Calculate K based on difficulty
+          const kValue = getKFromDifficulty();
           
-          // 4. Show the result
+          // Pass K in options
+          const result = processor(cvInstance, src, dst, { k: kValue });
+          
           cvInstance.imshow('processed-canvas', dst);
           processedPlaceholder.classList.add('placeholder-hidden');
           processedCanvas.classList.remove('canvas-hidden');
-          statusMessage.textContent = `Processing complete: ${operation}.`;
+          
+          // Handle Colors if returned
+          if (result && result.colors) {
+            setPalette(result.colors);
+            statusMessage.textContent = `Processing complete. Found ${result.colors.length} colors (K=${kValue}).`;
+          } else {
+            setPalette([]);
+            statusMessage.textContent = `Processing complete: ${operation}.`;
+          }
 
       } catch (error) {
-          console.error(`Error during ${operation} processing:`, error);
-          const exception = translateException(cvInstance, error);
-          console.error(exception);
-          statusMessage.textContent = `Error during ${operation} processing. Check console.`;
+          console.error(error);
+          statusMessage.textContent = `Error during ${operation} processing.`;
       } finally {
-        // 5. Centralized memory management
         src.delete();
         dst.delete();
       }
   }
 
   function resetImage() {
-      const cvInstance = cv(); // Get from signal
+      const cvInstance = cv();
       if (originalMat && cvInstance) {
         cvInstance.imshow('processed-canvas', originalMat);
         processedPlaceholder.classList.add('placeholder-hidden');
         processedCanvas.classList.remove('canvas-hidden');
+        setPalette([]); // Clear palette
         statusMessage.textContent = 'View reset to original image.';
-      } else {
-        processedPlaceholder.classList.remove('placeholder-hidden');
-        processedCanvas.classList.add('canvas-hidden');
-        imgElement.classList.remove('image-display-hidden');
-        originalCanvas.classList.add('canvas-hidden');
-        if (cvInstance) {
-          statusMessage.textContent = 'OpenCV.js loaded successfully. Ready to process.';
-        }
-        toggleControls(false);
       }
   }
-
 
   return (
     <>
@@ -189,58 +186,73 @@ function App() {
               Initializing OpenCV.js...
           </p>
 
-          <div className="control-area">
-            <input type="file" id="file-input" accept="image/*" disabled
-                  className="file-input-style" ref={inputElement} />
-            
-            <button onClick={() => processImage('grayscale')} id="grayscale-btn" disabled
-                    className="control-button button-indigo" ref={grayscaleBtn}>
-                Grayscale
-            </button>
-            <button onClick={() => processImage('canny')} id="canny-btn" disabled
-                    className="control-button button-purple" ref={cannyBtn}>
-                Canny Edge
-            </button>
-            <button onClick={() => processImage('contours')} id="contours-btn" disabled
-                    className="control-button button-teal" ref={contoursBtn}>
-                Find Contours
-            </button>
-            <button onClick={() => processImage('kmeans')} id="kmeans-btn" disabled
-                    className="control-button button-orange" ref={kmeansBtn}>
-                K-Means Quantization
-            </button>
-            
-            <button onClick={() => processImage('combined_contours')} id="combined-contours-btn" disabled
-                    className="control-button button-purple" ref={combinedContoursBtn}>
-                K-Means Combined with Find Contours
-            </button>
+          <div className="control-section">
+            {/* New: Image Selection & Difficulty */}
+            <div className="settings-panel">
+                <div className="setting-group">
+                    <label>Select Image Source:</label>
+                    <div className="image-selector-row">
+                        <select onChange={(e) => loadSrc(e.target.value)} className="simple-select">
+                            <option value="">-- Choose Preset --</option>
+                            <For each={PREDETERMINED_IMAGES}>{(img) => 
+                                <option value={img.url}>{img.name}</option>
+                            }</For>
+                        </select>
+                        <span className="or-divider">OR</span>
+                        <input type="file" id="file-input" accept="image/*" disabled
+                            className="file-input-style-compact" ref={inputElement} />
+                    </div>
+                </div>
 
-            <button onClick={() => processImage('ccl')} id="ccl-btn" disabled
-                    className="control-button button-teal" ref={cclBtn}>
-                Connected Components Labeling
-            </button>
-            <button onClick={() => processImage('combined_ccl')} id="combined-ccl-btn" disabled
-                    className="control-button button-orange" ref={combinedCclBtn}>
-                CCL Combined with K-Means
-            </button>
+                <div className="setting-group">
+                    <label>Difficulty (K-Means Complexity):</label>
+                    <select value={difficulty()} onChange={(e) => setDifficulty(e.target.value)} className="simple-select">
+                        <option value="easy">Easy (5 Color)</option>
+                        <option value="medium">Medium (15 Color)</option>
+                        <option value="hard">Hard (30 Color)</option>
+                    </select>
+                </div>
+            </div>
 
-            <button onClick={resetImage} id="reset-btn" disabled
-                    className="control-button button-red" ref={resetBtn}>
-                Reset
-            </button>
+            {/* Buttons */}
+            <div className="button-area">
+                <button onClick={() => processImage('grayscale')} ref={grayscaleBtn} disabled className="control-button button-indigo">Grayscale</button>
+                <button onClick={() => processImage('canny')} ref={cannyBtn} disabled className="control-button button-purple">Canny Edge</button>
+                <button onClick={() => processImage('contours')} ref={contoursBtn} disabled className="control-button button-teal">Find Contours</button>
+                <button onClick={() => processImage('kmeans')} ref={kmeansBtn} disabled className="control-button button-orange">K-Means</button>
+                <button onClick={() => processImage('combined_contours')} ref={combinedContoursBtn} disabled className="control-button button-purple">KM + Contours</button>
+                <button onClick={() => processImage('ccl')} ref={cclBtn} disabled className="control-button button-teal">CCL</button>
+                <button onClick={() => processImage('combined_ccl')} ref={combinedCclBtn} disabled className="control-button button-orange">KM + CCL</button>
+                <button onClick={resetImage} ref={resetBtn} disabled className="control-button button-red">Reset</button>
+            </div>
           </div>
+
+          {/* New: Color Palette Display */}
+          {palette().length > 0 && (
+            <div className="palette-container">
+                <h3>Extracted Colors:</h3>
+                <div className="palette-grid">
+                    <For each={palette()}>{(color) => 
+                        <div className="color-item">
+                            <div className="color-swatch" style={{'background-color': `rgb(${color.r},${color.g},${color.b})`}}></div>
+                            <span className="color-hex">{rgbToHex(color.r, color.g, color.b)}</span>
+                        </div>
+                    }</For>
+                </div>
+            </div>
+          )}
 
           <div className="canvas-grid">
               <div className="canvas-panel">
-                  <h2 className="panel-heading">Original Image</h2>
+                  <h2 className="panel-heading">Original</h2>
                   <div className="canvas-area">
-                      <img id="original-image-display" className="image-display-hidden image-display" src="" alt="Original Image Placeholder" ref={imgElement} />
+                      <img id="original-image-display" className="image-display-hidden image-display" src="" alt="" ref={imgElement} />
                       <canvas id="original-canvas" className="canvas-hidden" ref={originalCanvas}></canvas>
                   </div>
               </div>
 
               <div className="canvas-panel">
-                  <h2 className="panel-heading">Processed Output</h2>
+                  <h2 className="panel-heading">Processed</h2>
                   <div className="canvas-area">
                       <canvas id="processed-canvas" className="canvas-hidden" ref={processedCanvas}></canvas>
                       <p id="processed-placeholder" className="placeholder-text" ref={processedPlaceholder}>Output will appear here.</p>

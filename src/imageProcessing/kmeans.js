@@ -1,5 +1,5 @@
-export function processKmeans(cv, src, dst) {
-    const K = 5;
+export function processKmeans(cv, src, dst, options = {}) {
+    const K = options.k || 5; // Use passed K or default to 5
     const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0);
     const labels = new cv.Mat();
     const centers = new cv.Mat();
@@ -24,8 +24,19 @@ export function processKmeans(cv, src, dst) {
     cv.kmeans(samples32f, K, labels, criteria, 1, cv.KMEANS_RANDOM_CENTERS, centers);
     centers.convertTo(centers, cv.CV_8U, 255.0);
     
+    // --- EXTRACT COLORS---
+    const colors = [];
+    const centers_data = centers.data; 
+    for(let i = 0; i < centers.rows; i++) {
+        colors.push({
+            r: centers_data[i * 3],
+            g: centers_data[i * 3 + 1],
+            b: centers_data[i * 3 + 2]
+        });
+    }
+    // -----------------------------
+
     let p_result = 0;
-    let centers_data = centers.data; 
     let labels_data = labels.data32S; 
     
     // Reconstruct the image into dst Mat
@@ -37,4 +48,6 @@ export function processKmeans(cv, src, dst) {
     }
     
     rgb.delete(); samples32f.delete(); labels.delete(); centers.delete();
+
+    return { colors }; // Return the colors found
 }

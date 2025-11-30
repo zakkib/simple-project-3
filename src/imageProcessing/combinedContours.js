@@ -1,11 +1,11 @@
-export function processCombinedContours(cv, src, dst) {
+export function processCombinedContours(cv, src, dst, options = {}) {
     // K-Means
-    const K = 5;
+    const K = options.k || 5;
     const criteria = new cv.TermCriteria(cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0);
     const labels = new cv.Mat();
     const centers = new cv.Mat();
-    const rgb = new cv.Mat();
-    
+    const rgb = new cv.Mat(); // Fix: Define rgb mat
+
     cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
     let N = rgb.rows * rgb.cols;
     let samples32f = new cv.Mat(N, 3, cv.CV_32F);
@@ -23,8 +23,19 @@ export function processCombinedContours(cv, src, dst) {
     cv.kmeans(samples32f, K, labels, criteria, 1, cv.KMEANS_RANDOM_CENTERS, centers);
     centers.convertTo(centers, cv.CV_8U, 255.0);
     
+    // --- EXTRACT COLORS ---
+    const colors = [];
+    const centers_data = centers.data; 
+    for(let i = 0; i < centers.rows; i++) {
+        colors.push({
+            r: centers_data[i * 3],
+            g: centers_data[i * 3 + 1],
+            b: centers_data[i * 3 + 2]
+        });
+    }
+    // ----------------------
+
     let p_result = 0;
-    let centers_data = centers.data; 
     let labels_data = labels.data32S;
     
     for (let i = 0; i < labels_data.length; ++i) {
@@ -55,4 +66,6 @@ export function processCombinedContours(cv, src, dst) {
     cv.drawContours(dst, contours, -1, color, 1, cv.LINE_8, hierarchy, 100); 
     
     gray.delete(); binary.delete(); contours.delete(); hierarchy.delete();
+
+    return { colors };
 }
